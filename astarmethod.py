@@ -1,4 +1,5 @@
 import numpy as np
+from enum import Enum
 from environment import Environment
 import environment
 from environment import Point
@@ -31,6 +32,11 @@ class MapInfo:
     def printInfo(self):
         print(f"[g, h, par] is: [{self.g}, {self.h}, {self.par}]")
 
+class AstarStatus(Enum):
+    ENDED = 0
+    RUNNING = 1
+    UNRUN = 2
+    
 
 class AStarMethod():
     def __init__(self, environment):
@@ -44,14 +50,16 @@ class AStarMethod():
         self.exec_point = []
         self.past_exec_points = []
         self.frontier_queue = []
+        self.status = AstarStatus.UNRUN
     
     def initExecution(self):
         self.past_exec_points = []
         self.frontier_queue = []
-        self.exec_point = self.start
+        self.exec_point = []
         self.map[self.start.y, self.start.x].setInfo(g = 0, h = self.endHeuristic(self.start, self.end))
         self.addNewFrontierElements(self.start)
         print(f"New FrontierElements after init are: {self.frontier_queue}")
+        self.status = AstarStatus.RUNNING
 
     def endHeuristic(self, point, end): # h
         dx = abs(end.x - point.x)
@@ -100,6 +108,8 @@ class AStarMethod():
     def addNewFrontierElements(self, point):
         for rel_row in range(-1, 2, 1): #list from -1 to 1 for relative row 
             for rel_col in range(-1, 2, 1): #list from -1 to 1 for relative column
+                if rel_row == 0 and rel_col == 0:
+                    continue
                 eval_point = Point(point.x + rel_col, point.y + rel_row)
                 eval_point_g = self.getStartHeuristic(eval_point, point)
                 if self.env[eval_point.y , eval_point.x] == 1 or (self.map[eval_point.y, eval_point.x].g <= eval_point_g and self.map[eval_point.y, eval_point.x].containsValidInfo()):
@@ -109,10 +119,13 @@ class AStarMethod():
                     self.updateFrontierQueuePoint(eval_point)
 
     def executeFrontierPoint(self):
-        self.past_exec_points.append(Point(self.exec_point.x, self.exec_point.y))
+        if self.exec_point:
+            self.past_exec_points.append(Point(self.exec_point.x, self.exec_point.y))
         execPoint = self.frontier_queue.pop(0)[0]
+        print(f"Executing for point: {execPoint}")
         self.exec_point = execPoint
         if self.exec_point.x == self.end.x and self.exec_point.y == self.end.y:
+            self.status = AstarStatus.ENDED
             return False # The end point has been reached, stop algorithm
         self.map[self.exec_point.y, self.exec_point.x].queuePoint = False
         self.addNewFrontierElements(execPoint)
